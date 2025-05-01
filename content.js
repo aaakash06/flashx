@@ -39,62 +39,80 @@ const addButtonHoverEffects = (button) => {
 let selectedText = "";
 let floatingButton = null;
 
-document.addEventListener("mouseup", (e) => {
+function handleSelection() {
   const selection = window.getSelection();
   const text = selection.toString().trim();
 
   if (text && text.length > 0) {
     selectedText = text;
 
-    if (!floatingButton) {
-      floatingButton = createFloatingButton();
-      addButtonHoverEffects(floatingButton);
-      document.body.appendChild(floatingButton);
-    }
+    // if (!floatingButton) {
+    //   floatingButton = createFloatingButton();
+    //   addButtonHoverEffects(floatingButton);
+    //   document.body.appendChild(floatingButton);
+    // }
   } else {
     if (floatingButton) {
       floatingButton.remove();
       floatingButton = null;
     }
   }
-});
+}
+
+function handleCreation() {
+  // Send message to background script to save the flashcard
+  chrome.runtime.sendMessage({
+    type: "CREATE_FLASHCARD",
+    content: selectedText,
+    url: window.location.href,
+    title: document.title,
+  });
+
+  // Remove the floating button
+  if (floatingButton) {
+    floatingButton.remove();
+    floatingButton = null;
+  }
+
+  // Show a success notification
+  const notification = document.createElement("div");
+  notification.className = "flashx-notification";
+  notification.textContent = "Flashcard created!";
+  notification.style.cssText = `
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #10B981;
+  color: white;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  z-index: 10000;
+  animation: fadeInOut 2s ease-in-out;
+`;
+
+  document.body.appendChild(notification);
+  setTimeout(() => notification.remove(), 2000);
+}
+
+function handleSelectionAndCreation() {
+  console.log("handleSelectionAndCreation");
+  handleSelection();
+  if (selectedText) handleCreation();
+}
+
+document.addEventListener("mouseup", handleSelection);
 
 // Handle flashcard creation
 document.addEventListener("click", (e) => {
   if (e.target.className === "flashx-floating-button" && selectedText) {
-    // Send message to background script to save the flashcard
-    chrome.runtime.sendMessage({
-      type: "CREATE_FLASHCARD",
-      content: selectedText,
-      url: window.location.href,
-      title: document.title,
-    });
+    handleCreation();
+  }
+});
 
-    // Remove the floating button
-    if (floatingButton) {
-      floatingButton.remove();
-      floatingButton = null;
-    }
-
-    // Show a success notification
-    const notification = document.createElement("div");
-    notification.className = "flashx-notification";
-    notification.textContent = "Flashcard created!";
-    notification.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 8px 16px;
-      background-color: #10B981;
-      color: white;
-      border-radius: 4px;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      z-index: 10000;
-      animation: fadeInOut 2s ease-in-out;
-    `;
-
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 2000);
+document.addEventListener("keydown", (event) => {
+  if (event.ctrlKey && event.shiftKey && event.key === "X") {
+    handleSelectionAndCreation();
   }
 });
